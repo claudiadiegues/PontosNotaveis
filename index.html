@@ -34,6 +34,8 @@
   .exemplos{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
   .exemplos button{flex:1 1 auto;padding:7px 8px;border:1px solid #c9c9c4;background:#fff;border-radius:6px;cursor:pointer;font-size:.9rem}
   .exemplos button:hover{background:var(--fundo)}
+  .exemplos button.sel{background:var(--titulo);color:#fff;border-color:var(--titulo)}
+  .msg.aviso{background:#fff8e1;border-left-color:#e0a000}
   label{display:block;margin:4px 0;cursor:pointer}
   .dica{color:var(--suave);font-size:.88rem;margin-top:8px}
   footer{color:var(--suave);font-size:.8rem;text-align:center;margin-top:12px}
@@ -67,18 +69,18 @@
       <div class="msg" id="msg"></div>
       <div class="nota" id="nota" hidden></div>
 
-      <h2>Experimenta</h2>
+      <h2>Escolhe o triângulo</h2>
       <div class="sub">Quanto aos lados</div>
       <div class="exemplos">
-        <button data-ex="equi">Equilátero</button>
-        <button data-ex="iso">Isósceles</button>
-        <button data-ex="esc">Escaleno</button>
+        <button data-lados="equi">Equilátero</button>
+        <button data-lados="iso">Isósceles</button>
+        <button data-lados="esc">Escaleno</button>
       </div>
       <div class="sub">Quanto aos ângulos</div>
       <div class="exemplos">
-        <button data-ex="acut">Acutângulo</button>
-        <button data-ex="ret">Retângulo</button>
-        <button data-ex="obt">Obtusângulo</button>
+        <button data-ang="acut">Acutângulo</button>
+        <button data-ang="ret">Retângulo</button>
+        <button data-ang="obt">Obtusângulo</button>
       </div>
       <label><input type="checkbox" id="ver-linhas" checked> <span id="txt-linhas">Mostrar mediatrizes</span></label>
       <label id="lbl-circ"><input type="checkbox" id="ver-circ" checked> <span id="txt-circ">Mostrar circunferência circunscrita</span></label>
@@ -101,14 +103,22 @@
   let modo = 'circ';
   let V = { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} };
 
+  // um triângulo para cada combinação (lados × ângulos), posicionado para que
+  // a circunferência circunscrita e o ortocentro caibam na figura
+  const S3 = Math.sqrt(3);
   const EXEMPLOS = {
-    equi: { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:300,y:340-150*Math.sqrt(3)} },
-    iso:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:300,y:140} },
-    esc:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:370,y:160} },
-    acut: { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} },
-    ret:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:375,y:340-150*Math.sin(Math.PI/3)} },
-    obt:  { P:{x:170,y:225}, Q:{x:430,y:225}, R:{x:240,y:155} }  // mais acima, para se ver a circunferência e o ortocentro
+    'equi-acut': { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:300,y:340-150*S3} },
+    'iso-acut':  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:300,y:140} },
+    'iso-ret':   { P:{x:150,y:280}, Q:{x:450,y:280}, R:{x:300,y:130} },
+    'iso-obt':   { P:{x:180,y:225}, Q:{x:420,y:225}, R:{x:300,y:155} },
+    'esc-acut':  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} },
+    'esc-ret':   { P:{x:150,y:280}, Q:{x:450,y:280}, R:{x:375,y:280-75*S3} },
+    'esc-obt':   { P:{x:170,y:225}, Q:{x:430,y:225}, R:{x:240,y:155} }
   };
+  const NOME_LADOS = {equi:'equilátero', iso:'isósceles', esc:'escaleno'};
+  const NOME_ANG = {acut:'acutângulo', ret:'retângulo', obt:'obtusângulo'};
+  let atual = {lados:'esc', ang:'acut'};   // classificação do triângulo desenhado
+  let aviso = null;                        // combinação impossível escolhida
 
   // ---------- vetores ----------
   const sub = (a,b) => ({x:a.x-b.x, y:a.y-b.y});
@@ -308,9 +318,17 @@
       return;
     }
     const classeAng = reto ? 'retângulo' : (obtuso ? 'obtusângulo' : 'acutângulo');
+    atual = { lados:{'equilátero':'equi','isósceles':'iso','escaleno':'esc'}[classeLados],
+              ang:{'acutângulo':'acut','retângulo':'ret','obtusângulo':'obt'}[classeAng] };
+    const sel = aviso || atual;
+    document.querySelectorAll('[data-lados]').forEach(b => b.classList.toggle('sel', b.dataset.lados === sel.lados));
+    document.querySelectorAll('[data-ang]').forEach(b => b.classList.toggle('sel', b.dataset.ang === sel.ang));
+    elMsg.classList.toggle('aviso', !!aviso);
     elTipo.innerHTML = `Quanto aos lados: <b>${classeLados}</b><br>Quanto aos ângulos: <b>${classeAng}</b>`;
 
-    if (modo === 'circ'){
+    if (aviso){
+      elMsg.innerHTML = `Não existe nenhum triângulo <b>${NOME_LADOS[aviso.lados]} ${NOME_ANG[aviso.ang]}</b>: num triângulo equilátero, os três ângulos medem 60°. Escolhe outra combinação.`;
+    } else if (modo === 'circ'){
       if (reto) elMsg.innerHTML = `O circuncentro <b>C</b> está <b>sobre um lado</b>: é o ponto médio da hipotenusa ${hip}.`;
       else if (obtuso) elMsg.innerHTML = `O circuncentro <b>C</b> está no <b>exterior</b> do triângulo, do lado oposto ao ângulo obtuso (vértice ${vMax}).`;
       else elMsg.innerHTML = 'O circuncentro <b>C</b> está no <b>interior</b> do triângulo.';
@@ -375,6 +393,7 @@
       p = add(K, mul(uni(sub(p, K)), s));
     }
     V[n] = p;
+    aviso = null;
   }
 
   let arrasto = null;
@@ -407,7 +426,16 @@
     }
     requestAnimationFrame(passo);
   }
-  document.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => animarPara(EXEMPLOS[b.dataset.ex])));
+  function escolher(lados, ang){
+    if (lados === 'equi' && ang !== 'acut'){ aviso = {lados, ang}; desenhar(); return; }
+    aviso = null;
+    animarPara(EXEMPLOS[`${lados}-${ang}`]);
+  }
+  // cada botão muda só uma das classificações e mantém a outra
+  document.querySelectorAll('[data-lados]').forEach(b => b.addEventListener('click',
+    () => escolher(b.dataset.lados, (aviso || atual).ang)));
+  document.querySelectorAll('[data-ang]').forEach(b => b.addEventListener('click',
+    () => escolher((aviso || atual).lados, b.dataset.ang)));
 
   // ---------- separadores ----------
   function mudarModo(m){
