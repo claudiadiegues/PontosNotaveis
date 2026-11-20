@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuncentro e incentro de um triângulo</title>
+<style>
+  :root{
+    --azul:#1f5fbf; --verm:#c62828; --tinta:#1d1d1f; --titulo:#2c4f7c;
+    --fundo:#f6f6f3; --borda:#d6d6d0; --suave:#6b6b66;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--tinta)}
+  main{max-width:960px;margin:0 auto;padding:14px}
+  h1{font-size:1.35rem;margin:4px 0 10px;font-weight:600;color:var(--titulo)}
+  .tabs{display:flex;gap:8px;margin-bottom:10px}
+  .tabs button{flex:1;padding:10px;border:1px solid #c9c9c4;background:#fff;border-radius:8px;font-size:1rem;cursor:pointer;color:var(--tinta)}
+  .tabs button.ativo{background:var(--titulo);color:#fff;border-color:var(--titulo)}
+  .layout{display:grid;grid-template-columns:1fr 270px;gap:12px;align-items:start}
+  @media (max-width:740px){.layout{grid-template-columns:1fr}}
+  svg{width:100%;height:auto;background:#fff;border:1px solid var(--borda);border-radius:10px;touch-action:none;display:block;user-select:none}
+  .painel{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:12px 14px;font-size:.95rem;line-height:1.4}
+  .painel h2{font-size:1rem;margin:0 0 6px;color:var(--titulo)}
+  .tipo{font-size:1.1rem;font-weight:600;margin:2px 0 4px}
+  .msg{background:#fff4f4;border-left:4px solid var(--verm);padding:8px 10px;border-radius:4px;margin:8px 0 10px}
+  .angulos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;margin:6px 0 10px}
+  .angulos div{background:var(--fundo);border-radius:6px;padding:4px 0}
+  .angulos .reto{background:#e8f0fc;color:var(--azul);font-weight:600}
+  .angulos .obtuso{background:#fff4f4;color:var(--verm);font-weight:600}
+  .exemplos{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+  .exemplos button{flex:1 1 auto;padding:7px 8px;border:1px solid #c9c9c4;background:#fff;border-radius:6px;cursor:pointer;font-size:.9rem}
+  .exemplos button:hover{background:var(--fundo)}
+  label{display:block;margin:4px 0;cursor:pointer}
+  .dica{color:var(--suave);font-size:.88rem;margin-top:8px}
+  footer{color:var(--suave);font-size:.8rem;text-align:center;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Circuncentro e incentro de um triângulo</h1>
+
+  <div class="tabs">
+    <button id="tab-circ" class="ativo">Circuncentro</button>
+    <button id="tab-inc">Incentro</button>
+  </div>
+
+  <div class="layout">
+    <svg id="fig" viewBox="0 0 600 450" aria-label="Triângulo com vértices arrastáveis">
+      <defs>
+        <pattern id="grelha" width="30" height="30" patternUnits="userSpaceOnUse">
+          <path d="M30 0H0V30" fill="none" stroke="#ececE8" stroke-width="1"/>
+        </pattern>
+      </defs>
+      <rect width="600" height="450" fill="url(#grelha)"/>
+      <g id="camada"></g>
+    </svg>
+
+    <div class="painel">
+      <h2>O triângulo é…</h2>
+      <div class="tipo" id="tipo"></div>
+      <div class="angulos" id="angulos"></div>
+      <div class="msg" id="msg"></div>
+
+      <h2>Experimenta</h2>
+      <div class="exemplos">
+        <button data-ex="acut">Acutângulo</button>
+        <button data-ex="ret">Retângulo</button>
+        <button data-ex="obt">Obtusângulo</button>
+      </div>
+      <label><input type="checkbox" id="ver-linhas" checked> <span id="txt-linhas">Mostrar mediatrizes</span></label>
+      <label><input type="checkbox" id="ver-circ" checked> <span id="txt-circ">Mostrar circunferência circunscrita</span></label>
+      <label><input type="checkbox" id="ver-ang"> Mostrar amplitudes na figura</label>
+      <p class="dica">Arrasta os vértices <b>P</b>, <b>Q</b> e <b>R</b>. Quando um ângulo fica muito perto de 90°, o vértice «encaixa» no ângulo reto.</p>
+    </div>
+  </div>
+
+  <footer>Matemática A · 10.º ano · Prof. Cláudia Diegues</footer>
+</main>
+
+<script>
+(() => {
+  const svg = document.getElementById('fig');
+  const camada = document.getElementById('camada');
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 600, H = 450, MARGEM = 18, ENCAIXE = 2; // graus
+
+  let modo = 'circ';
+  let V = { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} };
+
+  const EXEMPLOS = {
+    acut: { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} },
+    ret:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:375,y:340-150*Math.sin(Math.PI/3)} },
+    obt:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:230,y:265} }
+  };
+
+  // ---------- vetores ----------
+  const sub = (a,b) => ({x:a.x-b.x, y:a.y-b.y});
+  const add = (a,b) => ({x:a.x+b.x, y:a.y+b.y});
+  const mul = (a,k) => ({x:a.x*k, y:a.y*k});
+  const dot = (a,b) => a.x*b.x + a.y*b.y;
+  const len = a => Math.hypot(a.x, a.y);
+  const uni = a => { const l = len(a) || 1; return {x:a.x/l, y:a.y/l}; };
+  const mid = (a,b) => ({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
+  const dist = (a,b) => len(sub(a,b));
+  const perp = a => ({x:-a.y, y:a.x});
+
+  function angulo(A, B, C) { // amplitude do ângulo de vértice A
+    const u = sub(B,A), v = sub(C,A);
+    const c = dot(u,v) / (len(u)*len(v));
+    return Math.acos(Math.max(-1, Math.min(1, c))) * 180 / Math.PI;
+  }
+  const fmt = x => x.toFixed(1).replace('.', ',');
+
+  function circuncentro(A,B,C){
+    const d = 2*(A.x*(B.y-C.y) + B.x*(C.y-A.y) + C.x*(A.y-B.y));
+    if (Math.abs(d) < 1e-6) return null;
+    const a2 = dot(A,A), b2 = dot(B,B), c2 = dot(C,C);
+    return { x:(a2*(B.y-C.y) + b2*(C.y-A.y) + c2*(A.y-B.y))/d,
+             y:(a2*(C.x-B.x) + b2*(A.x-C.x) + c2*(B.x-A.x))/d };
+  }
+  function projecao(X, A, B){ // projeção de X na reta AB
+    const u = uni(sub(B,A));
+    return add(A, mul(u, dot(sub(X,A), u)));
+  }
+
+  // ---------- desenho ----------
+  function el(nome, attrs, pai = camada){
+    const e = document.createElementNS(NS, nome);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    pai.appendChild(e);
+    return e;
+  }
+  function linha(A, B, cor, extra = {}){
+    return el('line', Object.assign({x1:A.x, y1:A.y, x2:B.x, y2:B.y, stroke:cor, 'stroke-width':1.6}, extra));
+  }
+  function retaInfinita(M, dir, cor, extra){
+    const d = uni(dir);
+    linha(add(M, mul(d, 2000)), add(M, mul(d, -2000)), cor, extra);
+  }
+  function ponto(X, cor, r = 4.5){ el('circle', {cx:X.x, cy:X.y, r, fill:cor}); }
+  function texto(X, t, cor, extra = {}){
+    const e = el('text', Object.assign({x:X.x, y:X.y, fill:cor, 'font-size':20, 'font-style':'italic',
+      'font-family':'Georgia, "Times New Roman", serif', 'text-anchor':'middle', 'dominant-baseline':'middle'}, extra));
+    e.textContent = t;
+    return e;
+  }
+  function anguloReto(X, Y, Z, cor){ // marca no vértice X
+    const s = 14, u = mul(uni(sub(Y,X)), s), v = mul(uni(sub(Z,X)), s);
+    const a = add(X,u), b = add(add(X,u), v), c = add(X,v);
+    el('polyline', {points:`${a.x},${a.y} ${b.x},${b.y} ${c.x},${c.y}`, fill:'none', stroke:cor, 'stroke-width':1.4});
+  }
+
+  function desenhar(){
+    camada.innerHTML = '';
+    const {P, Q, R} = V;
+    const G = {x:(P.x+Q.x+R.x)/3, y:(P.y+Q.y+R.y)/3};
+    const ang = { P:angulo(P,Q,R), Q:angulo(Q,R,P), R:angulo(R,P,Q) };
+    const area2 = Math.abs((Q.x-P.x)*(R.y-P.y) - (R.x-P.x)*(Q.y-P.y));
+    const degenerado = area2 < 200;
+
+    const verLinhas = document.getElementById('ver-linhas').checked;
+    const verCirc = document.getElementById('ver-circ').checked;
+    const verAng = document.getElementById('ver-ang').checked;
+
+    // tipo de triângulo
+    const nomes = ['P','Q','R'];
+    let vMax = nomes.reduce((a,b) => ang[a] >= ang[b] ? a : b);
+    const reto = Math.abs(ang[vMax] - 90) < 0.05;
+    const obtuso = !reto && ang[vMax] > 90;
+    const outros = nomes.filter(n => n !== vMax);
+    const hip = `[${outros.join('')}]`;
+
+    if (!degenerado){
+      if (modo === 'circ'){
+        const C = circuncentro(P,Q,R);
+        if (verLinhas){
+          for (const [A,B] of [[P,Q],[Q,R],[R,P]]) retaInfinita(mid(A,B), perp(sub(B,A)), 'var(--azul)');
+          for (const [A,B] of [[P,Q],[Q,R],[R,P]]) ponto(mid(A,B), 'var(--azul)', 3);
+        }
+        if (verCirc) el('circle', {cx:C.x, cy:C.y, r:dist(C,P), fill:'none', stroke:'var(--verm)', 'stroke-width':2.2});
+        ponto(C, 'var(--verm)', 5);
+        texto({x:C.x+16, y:C.y+18}, 'C', 'var(--verm)', {'font-weight':'bold'});
+      } else {
+        const a = dist(Q,R), b = dist(R,P), c = dist(P,Q), s = a+b+c;
+        const I = { x:(a*P.x + b*Q.x + c*R.x)/s, y:(a*P.y + b*Q.y + c*R.y)/s };
+        if (verLinhas){
+          // bissetriz de cada vértice até ao lado oposto
+          const pe = (X, Y, Z) => { const dy = dist(X,Y), dz = dist(X,Z); return mul(add(mul(Y, dz), mul(Z, dy)), 1/(dy+dz)); };
+          linha(P, pe(P,Q,R), 'var(--azul)');
+          linha(Q, pe(Q,R,P), 'var(--azul)');
+          linha(R, pe(R,P,Q), 'var(--azul)');
+        }
+        const T = projecao(I, P, Q);
+        const r = dist(I, T);
+        linha(I, T, 'var(--verm)', {'stroke-dasharray':'5 4', 'stroke-width':1.4});
+        anguloReto(T, I, Q, 'var(--verm)');
+        ponto(T, 'var(--verm)', 3.5);
+        const offT = uni(sub(T, I));
+        texto(add(T, mul(offT, 18)), 'T', 'var(--verm)');
+        if (verCirc) el('circle', {cx:I.x, cy:I.y, r, fill:'none', stroke:'var(--verm)', 'stroke-width':2.2});
+        ponto(I, 'var(--verm)', 5);
+        texto({x:I.x-14, y:I.y-16}, 'I', 'var(--verm)', {'font-weight':'bold'});
+      }
+    }
+
+    // triângulo
+    el('polygon', {points:`${P.x},${P.y} ${Q.x},${Q.y} ${R.x},${R.y}`, fill:'rgba(44,79,124,0.06)', stroke:'var(--tinta)', 'stroke-width':2.2, 'stroke-linejoin':'round'});
+    if (reto && !degenerado) anguloReto(V[vMax], V[outros[0]], V[outros[1]], 'var(--tinta)');
+
+    // amplitudes dentro da figura
+    if (verAng && !degenerado){
+      for (const n of nomes){
+        const pos = add(V[n], mul(uni(sub(G, V[n])), 42));
+        texto(pos, fmt(ang[n]) + '°', 'var(--suave)', {'font-size':13, 'font-style':'normal', 'font-family':'system-ui, sans-serif'});
+      }
+    }
+
+    // vértices (arrastáveis)
+    for (const n of nomes){
+      const X = V[n];
+      const g = el('g', {'data-v':n, style:'cursor:grab'});
+      el('circle', {cx:X.x, cy:X.y, r:22, fill:'transparent'}, g);
+      el('circle', {cx:X.x, cy:X.y, r:7, fill:'#fff', stroke:'var(--tinta)', 'stroke-width':2.5}, g);
+      const off = uni(sub(X, G));
+      texto(add(X, mul(off, 24)), n, 'var(--tinta)');
+    }
+
+    // painel
+    const elTipo = document.getElementById('tipo');
+    const elMsg = document.getElementById('msg');
+    const elAng = document.getElementById('angulos');
+    elAng.innerHTML = nomes.map(n => {
+      const cls = reto && n === vMax ? 'reto' : (obtuso && n === vMax ? 'obtuso' : '');
+      const valor = reto && n === vMax ? '90,0' : fmt(ang[n]);
+      return `<div class="${cls}">${n}<br>${valor}°</div>`;
+    }).join('');
+
+    if (degenerado){
+      elTipo.textContent = '—';
+      elMsg.innerHTML = 'Os três pontos estão (quase) alinhados: não formam um triângulo.';
+      return;
+    }
+    elTipo.textContent = reto ? 'Retângulo' : (obtuso ? 'Obtusângulo' : 'Acutângulo');
+
+    if (modo === 'circ'){
+      if (reto) elMsg.innerHTML = `O circuncentro <b>C</b> está <b>sobre um lado</b>: é o ponto médio da hipotenusa ${hip}.`;
+      else if (obtuso) elMsg.innerHTML = `O circuncentro <b>C</b> está no <b>exterior</b> do triângulo, do lado oposto ao ângulo obtuso (vértice ${vMax}).`;
+      else elMsg.innerHTML = 'O circuncentro <b>C</b> está no <b>interior</b> do triângulo.';
+    } else {
+      elMsg.innerHTML = 'O incentro <b>I</b> está <b>sempre no interior</b> do triângulo, seja qual for o tipo de triângulo.';
+    }
+  }
+
+  // ---------- arrastar ----------
+  function pontoSVG(e){
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+
+  function mover(n, p){
+    p = {x:Math.max(MARGEM, Math.min(W-MARGEM, p.x)), y:Math.max(MARGEM, Math.min(H-MARGEM, p.y))};
+    const [m, k] = ['P','Q','R'].filter(x => x !== n);
+    const M = V[m], K = V[k];
+    if (dist(p, M) < 25 || dist(p, K) < 25) return;
+
+    // encaixe no ângulo reto
+    if (Math.abs(angulo(p, M, K) - 90) < ENCAIXE){
+      const O = mid(M, K), r = dist(M, K)/2;
+      p = add(O, mul(uni(sub(p, O)), r));
+    } else if (Math.abs(angulo(M, K, p) - 90) < ENCAIXE){
+      const d = uni(perp(sub(K, M)));
+      p = add(M, mul(d, dot(sub(p, M), d)));
+    } else if (Math.abs(angulo(K, M, p) - 90) < ENCAIXE){
+      const d = uni(perp(sub(M, K)));
+      p = add(K, mul(d, dot(sub(p, K), d)));
+    }
+    V[n] = p;
+  }
+
+  let arrasto = null;
+  svg.addEventListener('pointerdown', e => {
+    const g = e.target.closest('[data-v]');
+    if (!g) return;
+    arrasto = g.dataset.v;
+    svg.setPointerCapture(e.pointerId);
+    svg.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!arrasto) return;
+    mover(arrasto, pontoSVG(e));
+    desenhar();
+  });
+  const largar = () => { arrasto = null; svg.style.cursor = ''; };
+  svg.addEventListener('pointerup', largar);
+  svg.addEventListener('pointercancel', largar);
+
+  // ---------- exemplos (com pequena animação) ----------
+  function animarPara(alvo){
+    const ini = JSON.parse(JSON.stringify(V)), t0 = performance.now(), dur = 450;
+    function passo(t){
+      const k = Math.min(1, (t - t0)/dur), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;
+      for (const n in V) V[n] = { x:ini[n].x + (alvo[n].x - ini[n].x)*e, y:ini[n].y + (alvo[n].y - ini[n].y)*e };
+      if (k === 1) for (const n in V) V[n] = {...alvo[n]};
+      desenhar();
+      if (k < 1) requestAnimationFrame(passo);
+    }
+    requestAnimationFrame(passo);
+  }
+  document.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => animarPara(EXEMPLOS[b.dataset.ex])));
+
+  // ---------- separadores ----------
+  function mudarModo(m){
+    modo = m;
+    document.getElementById('tab-circ').classList.toggle('ativo', m === 'circ');
+    document.getElementById('tab-inc').classList.toggle('ativo', m === 'inc');
+    document.getElementById('txt-linhas').textContent = m === 'circ' ? 'Mostrar mediatrizes' : 'Mostrar bissetrizes';
+    document.getElementById('txt-circ').textContent = m === 'circ' ? 'Mostrar circunferência circunscrita' : 'Mostrar circunferência inscrita';
+    desenhar();
+  }
+  document.getElementById('tab-circ').addEventListener('click', () => mudarModo('circ'));
+  document.getElementById('tab-inc').addEventListener('click', () => mudarModo('inc'));
+  ['ver-linhas','ver-circ','ver-ang'].forEach(id => document.getElementById(id).addEventListener('change', desenhar));
+
+  // permite abrir já no incentro: .../index.html#incentro
+  mudarModo(location.hash === '#incentro' ? 'inc' : 'circ');
+})();
+</script>
+</body>
+</html>
