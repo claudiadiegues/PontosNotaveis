@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Circuncentro e incentro de um triângulo</title>
+<title>Pontos notáveis de um triângulo</title>
 <style>
   :root{
     --azul:#1f5fbf; --verm:#c62828; --tinta:#1d1d1f; --titulo:#2c4f7c;
     --fundo:#f6f6f3; --borda:#d6d6d0; --suave:#6b6b66;
   }
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
   body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--fundo);color:var(--tinta)}
   main{max-width:960px;margin:0 auto;padding:14px}
   h1{font-size:1.35rem;margin:4px 0 10px;font-weight:600;color:var(--titulo)}
@@ -21,7 +22,10 @@
   svg{width:100%;height:auto;background:#fff;border:1px solid var(--borda);border-radius:10px;touch-action:none;display:block;user-select:none}
   .painel{background:#fff;border:1px solid var(--borda);border-radius:10px;padding:12px 14px;font-size:.95rem;line-height:1.4}
   .painel h2{font-size:1rem;margin:0 0 6px;color:var(--titulo)}
-  .tipo{font-size:1.1rem;font-weight:600;margin:2px 0 4px}
+  .tipo{font-size:1rem;margin:2px 0 4px}
+  .tipo b{font-size:1.05rem}
+  .nota{background:#eef4fc;border-left:4px solid var(--azul);padding:8px 10px;border-radius:4px;margin:0 0 10px}
+  .sub{font-size:.85rem;color:var(--suave);margin:6px 0 2px}
   .msg{background:#fff4f4;border-left:4px solid var(--verm);padding:8px 10px;border-radius:4px;margin:8px 0 10px}
   .angulos{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;margin:6px 0 10px}
   .angulos div{background:var(--fundo);border-radius:6px;padding:4px 0}
@@ -37,11 +41,12 @@
 </head>
 <body>
 <main>
-  <h1>Circuncentro e incentro de um triângulo</h1>
+  <h1>Pontos notáveis de um triângulo</h1>
 
   <div class="tabs">
     <button id="tab-circ" class="ativo">Circuncentro</button>
     <button id="tab-inc">Incentro</button>
+    <button id="tab-orto">Ortocentro</button>
   </div>
 
   <div class="layout">
@@ -60,17 +65,26 @@
       <div class="tipo" id="tipo"></div>
       <div class="angulos" id="angulos"></div>
       <div class="msg" id="msg"></div>
+      <div class="nota" id="nota" hidden></div>
 
       <h2>Experimenta</h2>
+      <div class="sub">Quanto aos lados</div>
+      <div class="exemplos">
+        <button data-ex="equi">Equilátero</button>
+        <button data-ex="iso">Isósceles</button>
+        <button data-ex="esc">Escaleno</button>
+      </div>
+      <div class="sub">Quanto aos ângulos</div>
       <div class="exemplos">
         <button data-ex="acut">Acutângulo</button>
         <button data-ex="ret">Retângulo</button>
         <button data-ex="obt">Obtusângulo</button>
       </div>
       <label><input type="checkbox" id="ver-linhas" checked> <span id="txt-linhas">Mostrar mediatrizes</span></label>
-      <label><input type="checkbox" id="ver-circ" checked> <span id="txt-circ">Mostrar circunferência circunscrita</span></label>
+      <label id="lbl-circ"><input type="checkbox" id="ver-circ" checked> <span id="txt-circ">Mostrar circunferência circunscrita</span></label>
+      <label><input type="checkbox" id="ver-outros"> Mostrar também os outros pontos notáveis</label>
       <label><input type="checkbox" id="ver-ang"> Mostrar amplitudes na figura</label>
-      <p class="dica">Arrasta os vértices <b>P</b>, <b>Q</b> e <b>R</b>. Quando um ângulo fica muito perto de 90°, o vértice «encaixa» no ângulo reto.</p>
+      <p class="dica">Arrasta os vértices <b>P</b>, <b>Q</b> e <b>R</b>. Quando o triângulo fica quase retângulo, isósceles ou equilátero, o vértice «encaixa» nessa posição.</p>
     </div>
   </div>
 
@@ -88,9 +102,12 @@
   let V = { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} };
 
   const EXEMPLOS = {
+    equi: { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:300,y:340-150*Math.sqrt(3)} },
+    iso:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:300,y:140} },
+    esc:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:370,y:160} },
     acut: { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:270,y:110} },
     ret:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:375,y:340-150*Math.sin(Math.PI/3)} },
-    obt:  { P:{x:150,y:340}, Q:{x:450,y:340}, R:{x:230,y:265} }
+    obt:  { P:{x:170,y:225}, Q:{x:430,y:225}, R:{x:240,y:155} }  // mais acima, para se ver a circunferência e o ortocentro
   };
 
   // ---------- vetores ----------
@@ -117,6 +134,14 @@
     const a2 = dot(A,A), b2 = dot(B,B), c2 = dot(C,C);
     return { x:(a2*(B.y-C.y) + b2*(C.y-A.y) + c2*(A.y-B.y))/d,
              y:(a2*(C.x-B.x) + b2*(A.x-C.x) + c2*(B.x-A.x))/d };
+  }
+  function incentro(A,B,C){
+    const a = dist(B,C), b = dist(C,A), c = dist(A,B), s = a+b+c;
+    return { x:(a*A.x + b*B.x + c*C.x)/s, y:(a*A.y + b*B.y + c*C.y)/s };
+  }
+  function ortocentro(A,B,C){ // H = A + B + C - 2·(circuncentro)
+    const O = circuncentro(A,B,C);
+    return { x:A.x+B.x+C.x-2*O.x, y:A.y+B.y+C.y-2*O.y };
   }
   function projecao(X, A, B){ // projeção de X na reta AB
     const u = uni(sub(B,A));
@@ -170,6 +195,16 @@
     const outros = nomes.filter(n => n !== vMax);
     const hip = `[${outros.join('')}]`;
 
+    // classificação quanto aos lados
+    const igual = (x, y) => Math.abs(x - y) < 0.003 * Math.max(x, y);
+    const lado = { P:dist(Q,R), Q:dist(R,P), R:dist(P,Q) }; // lado oposto a cada vértice
+    let classeLados = 'escaleno', vertice = null;
+    if (igual(lado.P, lado.Q) && igual(lado.Q, lado.R)) classeLados = 'equilátero';
+    else for (const n of nomes){
+      const [m, k] = nomes.filter(x => x !== n);
+      if (igual(lado[m], lado[k])) { classeLados = 'isósceles'; vertice = n; } // n = vértice entre os lados iguais
+    }
+
     if (!degenerado){
       if (modo === 'circ'){
         const C = circuncentro(P,Q,R);
@@ -180,9 +215,28 @@
         if (verCirc) el('circle', {cx:C.x, cy:C.y, r:dist(C,P), fill:'none', stroke:'var(--verm)', 'stroke-width':2.2});
         ponto(C, 'var(--verm)', 5);
         texto({x:C.x+16, y:C.y+18}, 'C', 'var(--verm)', {'font-weight':'bold'});
+      } else if (modo === 'orto'){
+        const Hh = ortocentro(P,Q,R);
+        for (const [X, Y, Z] of [[P,Q,R],[Q,R,P],[R,P,Q]]){
+          const F = projecao(X, Y, Z);
+          const t = dot(sub(F,Y), sub(Z,Y)) / dot(sub(Z,Y), sub(Z,Y));
+          // prolongamento do lado quando o pé da altura fica fora dele
+          if (t < -0.001) linha(Y, F, 'var(--suave)', {'stroke-dasharray':'6 4', 'stroke-width':1.3});
+          if (t > 1.001)  linha(Z, F, 'var(--suave)', {'stroke-dasharray':'6 4', 'stroke-width':1.3});
+          if (verLinhas){
+            retaInfinita(X, perp(sub(Z, Y)), 'var(--azul)');
+            if (dist(F, Y) > 3 && dist(F, Z) > 3){
+              anguloReto(F, X, t > 0.5 ? Y : Z, 'var(--azul)');
+              ponto(F, 'var(--azul)', 3);
+            }
+          }
+        }
+        ponto(Hh, 'var(--verm)', 5);
+        const pertoVertice = nomes.some(n => dist(V[n], Hh) < 12);
+        const posH = pertoVertice ? add(Hh, mul(uni(sub(G, Hh)), 26)) : {x:Hh.x+16, y:Hh.y+18};
+        texto(posH, 'H', 'var(--verm)', {'font-weight':'bold'});
       } else {
-        const a = dist(Q,R), b = dist(R,P), c = dist(P,Q), s = a+b+c;
-        const I = { x:(a*P.x + b*Q.x + c*R.x)/s, y:(a*P.y + b*Q.y + c*R.y)/s };
+        const I = incentro(P,Q,R);
         if (verLinhas){
           // bissetriz de cada vértice até ao lado oposto
           const pe = (X, Y, Z) => { const dy = dist(X,Y), dz = dist(X,Z); return mul(add(mul(Y, dz), mul(Z, dy)), 1/(dy+dz)); };
@@ -200,6 +254,18 @@
         if (verCirc) el('circle', {cx:I.x, cy:I.y, r, fill:'none', stroke:'var(--verm)', 'stroke-width':2.2});
         ponto(I, 'var(--verm)', 5);
         texto({x:I.x-14, y:I.y-16}, 'I', 'var(--verm)', {'font-weight':'bold'});
+      }
+    }
+
+    // outros pontos notáveis (a cinzento)
+    if (document.getElementById('ver-outros').checked && !degenerado){
+      const pts = { circ:['C', circuncentro(P,Q,R)], inc:['I', incentro(P,Q,R)], orto:['H', ortocentro(P,Q,R)] };
+      for (const m in pts){
+        if (m === modo) continue;
+        const [nome, X] = pts[m];
+        ponto(X, '#8a8a85', 4);
+        const off = {C:{x:-14,y:16}, I:{x:-14,y:-14}, H:{x:14,y:-14}}[nome];
+        texto(add(X, off), nome, '#8a8a85', {'font-size':17});
       }
     }
 
@@ -236,18 +302,37 @@
     }).join('');
 
     if (degenerado){
+      document.getElementById('nota').hidden = true;
       elTipo.textContent = '—';
       elMsg.innerHTML = 'Os três pontos estão (quase) alinhados: não formam um triângulo.';
       return;
     }
-    elTipo.textContent = reto ? 'Retângulo' : (obtuso ? 'Obtusângulo' : 'Acutângulo');
+    const classeAng = reto ? 'retângulo' : (obtuso ? 'obtusângulo' : 'acutângulo');
+    elTipo.innerHTML = `Quanto aos lados: <b>${classeLados}</b><br>Quanto aos ângulos: <b>${classeAng}</b>`;
 
     if (modo === 'circ'){
       if (reto) elMsg.innerHTML = `O circuncentro <b>C</b> está <b>sobre um lado</b>: é o ponto médio da hipotenusa ${hip}.`;
       else if (obtuso) elMsg.innerHTML = `O circuncentro <b>C</b> está no <b>exterior</b> do triângulo, do lado oposto ao ângulo obtuso (vértice ${vMax}).`;
       else elMsg.innerHTML = 'O circuncentro <b>C</b> está no <b>interior</b> do triângulo.';
+    } else if (modo === 'orto'){
+      if (reto) elMsg.innerHTML = `O ortocentro <b>H</b> coincide com o <b>vértice do ângulo reto</b> (${vMax}): os dois catetos são também alturas.`;
+      else if (obtuso) elMsg.innerHTML = `O ortocentro <b>H</b> está no <b>exterior</b> do triângulo, do lado do ângulo obtuso (vértice ${vMax}). Para o encontrar é preciso prolongar alturas e lados.`;
+      else elMsg.innerHTML = 'O ortocentro <b>H</b> está no <b>interior</b> do triângulo.';
     } else {
       elMsg.innerHTML = 'O incentro <b>I</b> está <b>sempre no interior</b> do triângulo, seja qual for o tipo de triângulo.';
+    }
+
+    const elNota = document.getElementById('nota');
+    const nomeCentro = {circ:'circuncentro <b>C</b>', inc:'incentro <b>I</b>', orto:'ortocentro <b>H</b>'}[modo];
+    if (classeLados === 'equilátero'){
+      elNota.hidden = false;
+      elNota.innerHTML = 'No triângulo equilátero, o circuncentro, o incentro e o ortocentro <b>coincidem</b>. Ativa «Mostrar também os outros pontos notáveis» para confirmares.';
+    } else if (classeLados === 'isósceles'){
+      const base = '[' + nomes.filter(n => n !== vertice).join('') + ']';
+      elNota.hidden = false;
+      elNota.innerHTML = `No triângulo isósceles, o ${nomeCentro} está sobre o <b>eixo de simetria</b> do triângulo (a mediatriz da base ${base}), tal como os outros pontos notáveis.`;
+    } else {
+      elNota.hidden = true;
     }
   }
 
@@ -264,6 +349,12 @@
     const M = V[m], K = V[k];
     if (dist(p, M) < 25 || dist(p, K) < 25) return;
 
+    const s = dist(M, K), Mm = mid(M, K), eixo = uni(perp(sub(K, M)));
+    // encaixe no triângulo equilátero
+    for (const sinal of [1, -1]){
+      const E = add(Mm, mul(eixo, sinal * s * Math.sqrt(3)/2));
+      if (dist(p, E) < 10){ V[n] = E; return; }
+    }
     // encaixe no ângulo reto
     if (Math.abs(angulo(p, M, K) - 90) < ENCAIXE){
       const O = mid(M, K), r = dist(M, K)/2;
@@ -274,6 +365,14 @@
     } else if (Math.abs(angulo(K, M, p) - 90) < ENCAIXE){
       const d = uni(perp(sub(M, K)));
       p = add(K, mul(d, dot(sub(p, K), d)));
+    }
+    // encaixe no triângulo isósceles
+    else if (Math.abs(dist(p, M) - dist(p, K)) < 6){
+      p = add(Mm, mul(eixo, dot(sub(p, Mm), eixo)));
+    } else if (Math.abs(dist(p, M) - s) < 6){
+      p = add(M, mul(uni(sub(p, M)), s));
+    } else if (Math.abs(dist(p, K) - s) < 6){
+      p = add(K, mul(uni(sub(p, K)), s));
     }
     V[n] = p;
   }
@@ -315,16 +414,19 @@
     modo = m;
     document.getElementById('tab-circ').classList.toggle('ativo', m === 'circ');
     document.getElementById('tab-inc').classList.toggle('ativo', m === 'inc');
-    document.getElementById('txt-linhas').textContent = m === 'circ' ? 'Mostrar mediatrizes' : 'Mostrar bissetrizes';
+    document.getElementById('tab-orto').classList.toggle('ativo', m === 'orto');
+    document.getElementById('txt-linhas').textContent = {circ:'Mostrar mediatrizes', inc:'Mostrar bissetrizes', orto:'Mostrar alturas'}[m];
+    document.getElementById('lbl-circ').hidden = m === 'orto';
     document.getElementById('txt-circ').textContent = m === 'circ' ? 'Mostrar circunferência circunscrita' : 'Mostrar circunferência inscrita';
     desenhar();
   }
   document.getElementById('tab-circ').addEventListener('click', () => mudarModo('circ'));
   document.getElementById('tab-inc').addEventListener('click', () => mudarModo('inc'));
-  ['ver-linhas','ver-circ','ver-ang'].forEach(id => document.getElementById(id).addEventListener('change', desenhar));
+  document.getElementById('tab-orto').addEventListener('click', () => mudarModo('orto'));
+  ['ver-linhas','ver-circ','ver-ang','ver-outros'].forEach(id => document.getElementById(id).addEventListener('change', desenhar));
 
-  // permite abrir já no incentro: .../index.html#incentro
-  mudarModo(location.hash === '#incentro' ? 'inc' : 'circ');
+  // permite abrir já num separador: .../#incentro ou .../#ortocentro
+  mudarModo({'#incentro':'inc', '#ortocentro':'orto'}[location.hash] || 'circ');
 })();
 </script>
 </body>
